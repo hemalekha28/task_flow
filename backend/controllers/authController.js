@@ -4,8 +4,9 @@ const { validationResult } = require('express-validator');
 // @desc    Register a new user
 // @route   POST /api/auth/register
 // @access  Public
-exports.register = async (req, res) => {
+exports.register = async (req, res, next) => {
     try {
+        console.log('Register handler reached, next is:', typeof next);
         const errors = validationResult(req);
         if (!errors.isEmpty()) {
             return res.status(400).json({ errors: errors.array() });
@@ -41,8 +42,13 @@ exports.register = async (req, res) => {
             }
         });
     } catch (err) {
-        console.error(err.message);
-        res.status(500).json({ message: 'Server error' });
+        require('fs').appendFileSync('error.log', `Registration failed at ${new Date()}: ${err.message}\n${err.stack}\n`);
+        console.error('Registration failed:', err);
+        res.status(500).json({ 
+            message: 'Server error', 
+            error: err.message,
+            stack: err.stack 
+        });
     }
 };
 

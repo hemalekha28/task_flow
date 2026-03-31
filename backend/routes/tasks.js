@@ -13,12 +13,10 @@ router.use(auth.protect);
 // @access  Private
 router.get(
   '/',
-  [
-    check('status', 'Status must be one of: pending, in_progress, completed').optional().isIn(['pending', 'in_progress', 'completed']),
-    check('priority', 'Priority must be one of: high, medium, low').optional().isIn(['high', 'medium', 'low']),
-    check('sortBy', 'sortBy must be either dueDate or createdAt').optional().isIn(['dueDate', 'createdAt']),
-    check('order', 'Order must be either asc or desc').optional().isIn(['asc', 'desc'])
-  ],
+  check('status', 'Status must be one of: pending, in_progress, completed').optional().isIn(['pending', 'in_progress', 'completed']),
+  check('priority', 'Priority must be one of: high, medium, low').optional().isIn(['high', 'medium', 'low']),
+  check('sortBy', 'sortBy must be either dueDate or createdAt').optional().isIn(['dueDate', 'createdAt']),
+  check('order', 'Order must be either asc or desc').optional().isIn(['asc', 'desc']),
   taskController.getTasks
 );
 
@@ -37,13 +35,11 @@ router.get('/:id', taskController.getTask);
 // @access  Private
 router.post(
   '/',
-  [
-    check('title', 'Title is required').not().isEmpty(),
-    check('description', 'Description must be less than 500 characters').optional().isLength({ max: 500 }),
-    check('priority', 'Priority must be one of: high, medium, low').optional().isIn(['high', 'medium', 'low']),
-    check('status', 'Status must be one of: pending, in_progress, completed').optional().isIn(['pending', 'in_progress', 'completed']),
-    check('dueDate', 'Please include a valid date').optional().isISO8601()
-  ],
+  check('title', 'Title is required').not().isEmpty(),
+  check('description', 'Description must be less than 500 characters').optional().isLength({ max: 500 }),
+  check('priority', 'Priority must be one of: high, medium, low').optional().isIn(['high', 'medium', 'low']),
+  check('status', 'Status must be one of: pending, in_progress, completed').optional().isIn(['pending', 'in_progress', 'completed']),
+  check('dueDate', 'Please include a valid date').optional().isISO8601(),
   taskController.createTask
 );
 
@@ -52,13 +48,11 @@ router.post(
 // @access  Private
 router.put(
   '/:id',
-  [
-    check('title', 'Title is required').optional().not().isEmpty(),
-    check('description', 'Description must be less than 500 characters').optional().isLength({ max: 500 }),
-    check('priority', 'Priority must be one of: high, medium, low').optional().isIn(['high', 'medium', 'low']),
-    check('status', 'Status must be one of: pending, in_progress, completed').optional().isIn(['pending', 'in_progress', 'completed']),
-    check('dueDate', 'Please include a valid date').optional().isISO8601()
-  ],
+  check('title', 'Title is required').optional().not().isEmpty(),
+  check('description', 'Description must be less than 500 characters').optional().isLength({ max: 500 }),
+  check('priority', 'Priority must be one of: high, medium, low').optional().isIn(['high', 'medium', 'low']),
+  check('status', 'Status must be one of: pending, in_progress, completed').optional().isIn(['pending', 'in_progress', 'completed']),
+  check('dueDate', 'Please include a valid date').optional().isISO8601(),
   taskController.updateTask
 );
 

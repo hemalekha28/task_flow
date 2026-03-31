@@ -2,6 +2,8 @@ const express = require('express');
 const { check } = require('express-validator');
 const authController = require('../controllers/authController');
 const auth = require('../middleware/auth');
+console.log('AUTH MIDDLEWARE LOADED:', Object.keys(auth));
+console.log('REGISTER HANDLER TYPE:', typeof authController.register);
 
 const router = express.Router();
 
@@ -10,11 +12,6 @@ const router = express.Router();
 // @access  Public
 router.post(
   '/register',
-  [
-    check('name', 'Name is required').not().isEmpty(),
-    check('email', 'Please include a valid email').isEmail(),
-    check('password', 'Please enter a password with 6 or more characters').isLength({ min: 6 })
-  ],
   authController.register
 );
 
@@ -23,10 +20,8 @@ router.post(
 // @access  Public
 router.post(
   '/login',
-  [
-    check('email', 'Please include a valid email').isEmail(),
-    check('password', 'Password is required').exists()
-  ],
+  check('email', 'Please include a valid email').isEmail(),
+  check('password', 'Password is required').exists(),
   authController.login
 );
 
@@ -45,11 +40,9 @@ router.get('/me', auth.protect, authController.getMe);
 // @access  Private
 router.put(
   '/updatedetails',
-  [
-    auth.protect,
-    check('name', 'Name is required').not().isEmpty(),
-    check('email', 'Please include a valid email').isEmail()
-  ],
+  auth.protect,
+  check('name', 'Name is required').not().isEmpty(),
+  check('email', 'Please include a valid email').isEmail(),
   authController.updateDetails
 );
 
@@ -58,11 +51,9 @@ router.put(
 // @access  Private
 router.put(
   '/updatepassword',
-  [
-    auth.protect,
-    check('currentPassword', 'Current password is required').not().isEmpty(),
-    check('newPassword', 'Please enter a password with 6 or more characters').isLength({ min: 6 })
-  ],
+  auth.protect,
+  check('currentPassword', 'Current password is required').not().isEmpty(),
+  check('newPassword', 'Please enter a password with 6 or more characters').isLength({ min: 6 }),
   authController.updatePassword
 );
 

@@ -87,14 +87,20 @@ exports.createTask = async (req, res) => {
 
     const { title, description, priority, status, dueDate } = req.body;
 
-    const newTask = new Task({
+    const newTaskData = {
       title,
       description,
       priority,
       status,
       dueDate,
       user: req.user.id
-    });
+    };
+
+    if (status === 'completed') {
+      newTaskData.completedAt = new Date();
+    }
+
+    const newTask = new Task(newTaskData);
 
     const task = await newTask.save();
 
@@ -125,7 +131,14 @@ exports.updateTask = async (req, res) => {
     if (title) taskFields.title = title;
     if (description) taskFields.description = description;
     if (priority) taskFields.priority = priority;
-    if (status) taskFields.status = status;
+    if (status) {
+      taskFields.status = status;
+      if (status === 'completed') {
+        taskFields.completedAt = new Date();
+      } else {
+        taskFields.completedAt = null;
+      }
+    }
     if (dueDate) taskFields.dueDate = dueDate;
 
     // Find and update the task, ensuring user owns it
@@ -182,8 +195,13 @@ exports.deleteTask = async (req, res) => {
 // @access  Private
 exports.getTaskStats = async (req, res) => {
   try {
-    const stats = await Task.aggregate([
-      { $match: { user: new mongoose.Types.ObjectId(req.user.id) } },
+    const userId = new mongoose.Types.ObjectId(req.user.id);
+    const now = new Date();
+    const lastWeek = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+    const previousWeek = new Date(now.getTime() - 14 * 24 * 60 * 60 * 1000);
+
+    const statsArray = await Task.aggregate([
+      { $match: { user: userId } },
       {
         $group: {
           _id: null,
@@ -203,7 +221,36 @@ exports.getTaskStats = async (req, res) => {
                 {
                   $and: [
                     { $ne: ['$status', 'completed'] },
-                    { $lt: ['$dueDate', new Date()] }
+                    { $lt: ['$dueDate', now] }
+                  ]
+                },
+                1,
+                0
+              ]
+            }
+          },
+          completedLastWeek: {
+            $sum: {
+              $cond: [
+                {
+                  $and: [
+                    { $eq: ['$status', 'completed'] },
+                    { $gte: [{ $ifNull: ['$completedAt', '$updatedAt'] }, lastWeek] }
+                  ]
+                },
+                1,
+                0
+              ]
+            }
+          },
+          completedPreviousWeek: {
+            $sum: {
+              $cond: [
+                {
+                  $and: [
+                    { $eq: ['$status', 'completed'] },
+                    { $lt: [{ $ifNull: ['$completedAt', '$updatedAt'] }, lastWeek] },
+                    { $gte: [{ $ifNull: ['$completedAt', '$updatedAt'] }, previousWeek] }
                   ]
                 },
                 1,
@@ -215,21 +262,56 @@ exports.getTaskStats = async (req, res) => {
       }
     ]);
 
-    // Format the response
-    const result = stats[0] || {
+    // Monthly flow - group by month for the last 6 months
+    const sixMonthsAgo = new Date(now.getFullYear(), now.getMonth() - 5, 1);
+    const flow = await Task.aggregate([
+      {
+        $match: {
+          user: userId,
+          status: 'completed',
+          $or: [
+            { completedAt: { $gte: sixMonthsAgo } },
+            { $and: [{ completedAt: { $exists: false } }, { updatedAt: { $gte: sixMonthsAgo } }] }
+          ]
+        }
+      },
+      {
+        $group: {
+          _id: {
+            year: { $year: { $ifNull: ['$completedAt', '$updatedAt'] } },
+            month: { $month: { $ifNull: ['$completedAt', '$updatedAt'] } }
+          },
+          count: { $sum: 1 }
+        }
+      },
+      { $sort: { '_id.year': 1, '_id.month': 1 } }
+    ]);
+
+    // Format flow data
+    const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    const formattedFlow = flow.map(item => ({
+      month: `${monthNames[item._id.month - 1]} ${item._id.year}`,
+      count: item.count
+    }));
+
+    const result = statsArray[0] || {
       totalTasks: 0,
       completedTasks: 0,
       pendingTasks: 0,
       inProgressTasks: 0,
-      overdueTasks: 0
+      overdueTasks: 0,
+      completedLastWeek: 0,
+      completedPreviousWeek: 0
     };
+
+    result.flow = formattedFlow;
 
     res.status(200).json({
       success: true,
       data: result
     });
   } catch (err) {
-    console.error(err.message);
+    console.error('Stats Error:', err.message);
     res.status(500).json({ message: 'Server Error' });
   }
 };
